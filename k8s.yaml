@@ -9,7 +9,7 @@ spec:
   ports:
   - name: http
     port: 80
-    targetPort: 8888
+    targetPort: 8080
     protocol: TCP
 ---
 apiVersion: v1
@@ -18,10 +18,14 @@ metadata:
   name: config-server-properties
 data:
   application.properties: |
-    spring.cloud.config.server.health.enabled=true
+    spring.cloud.config.server.health.enabled=false
     spring.cloud.config.server.git.uri=https://github.com/slamdev/spring-cloud-config-server
     spring.cloud.config.server.git.searchPaths=example-config
     spring.cloud.config.server.git.clone-on-start=true
+    spring.cloud.config.server.git.basedir=/opt/git-config
+    spring.cloud.config.server.git.refresh-rate=5
+    logging.level.org.springframework.cloud.config.server.environment=warn
+    logging.level.org.springframework.context.annotation=warn
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -48,7 +52,7 @@ spec:
         readinessProbe:
           httpGet:
             path: /actuator/health
-            port: 8888
+            port: 8080
             scheme: HTTP
           initialDelaySeconds: 20
           periodSeconds: 5
@@ -58,7 +62,7 @@ spec:
         livenessProbe:
           httpGet:
             path: /actuator/health
-            port: 8888
+            port: 8080
             scheme: HTTP
           initialDelaySeconds: 30
           periodSeconds: 5
@@ -80,7 +84,7 @@ spec:
         - name: application-properties
           mountPath: /opt/config
         env:
-          - name: SPRING_CONFIG_ADDITIONAL_LOCATION
+          - name: SPRING_CONFIG_LOCATION
             value: file:/opt/config/application.properties
       volumes:
       - configMap:

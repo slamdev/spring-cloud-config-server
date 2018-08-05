@@ -4,3 +4,7 @@ IMAGE := slamdev/spring-cloud-config-server
 build:
 	docker build -t $(IMAGE) .
 	docker push $(IMAGE)
+
+.PHONY: test
+test:
+	curl http://config-server.svc.cluster.local/application/default | jq
