@@ -1,0 +1,88 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: config-server
+spec:
+  type: ClusterIP
+  selector:
+    name: config-server
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8888
+    protocol: TCP
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-server-properties
+data:
+  application.properties: |
+    spring.cloud.config.server.health.enabled=true
+    spring.cloud.config.server.git.uri=https://github.com/slamdev/spring-cloud-config-server
+    spring.cloud.config.server.git.searchPaths=example-config
+    spring.cloud.config.server.git.clone-on-start=true
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: config-server
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      name: config-server
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        name: config-server
+    spec:
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 10
+      containers:
+      - name: config-server
+        image: slamdev/spring-cloud-config-server
+        imagePullPolicy: Always
+        readinessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8888
+            scheme: HTTP
+          initialDelaySeconds: 20
+          periodSeconds: 5
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 20
+        livenessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8888
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 20
+        ports:
+        - name: http
+          containerPort: 8888
+          protocol: TCP
+        resources:
+          requests:
+            cpu: 1
+            memory: 2Gi
+          limits:
+            cpu: 1
+            memory: 2Gi
+        volumeMounts:
+        - name: application-properties
+          mountPath: /opt/config
+        env:
+          - name: SPRING_CONFIG_ADDITIONAL_LOCATION
+            value: file:/opt/config/application.properties
+      volumes:
+      - configMap:
+          name: config-server-properties
+        name: application-properties
